@@ -1,5 +1,7 @@
 .DS_Store
 node_modules/
+# Built by package.sh
+build/
 # Never commit anything copied back from the Kindle.
 appreg.db*
 *.log

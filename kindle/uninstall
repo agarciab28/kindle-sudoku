@@ -1,0 +1,18 @@
+#!/bin/sh
+# Removes Sudoku completely, including the saved game.
+# Run it on the Kindle (kTerm or SSH):  sh /mnt/us/documents/sudoku/uninstall
+# (No .sh extension on purpose: the Kindle lists every .sh under documents as a book.)
+ID=com.alexgar.sudoku
+DB=/var/local/appreg.db
+sqlite3 "$DB" <<SQL
+BEGIN;
+DELETE FROM associations WHERE handlerId='$ID';
+DELETE FROM properties WHERE handlerId='$ID';
+DELETE FROM handlerIds WHERE handlerId='$ID';
+COMMIT;
+SQL
+rm -rf /var/local/mesquite/sudoku /var/local/mesquite/$ID
+# The saved game and the stats (the app's localStorage).
+rm -rf /mnt/us/.active_content_sandbox/sudoku
+rm -rf /mnt/us/documents/Sudoku.sh /mnt/us/documents/Sudoku.sh.sdr /mnt/us/documents/sudoku
+echo "Sudoku uninstalled."

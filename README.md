@@ -1,49 +1,107 @@
-# Sudoku — a native app for a jailbroken Kindle
+# Sudoku for Kindle
 
-A sudoku made for e-ink: black on white, no animation, big tap targets, and
-only the cells that change are repainted. It is a Kindle WAF (like the Kindle
-Store or Help) and runs entirely on the device: no network, no service.
+A sudoku made for e-ink, for jailbroken Kindles. It opens from the library like
+a book and runs entirely on the device: no network, no account, no permissions.
 
-Built for a Kindle Paperwhite 12th gen (firmware 5.20.2, jailbroken); the layout
-adapts to the screen size.
+<img src="docs/screenshot.png" alt="Sudoku on a Kindle Paperwhite" width="320">
 
-## What it does
+- **Three levels.** *Fácil* and *Medio* need only singles. *Difícil* always needs
+  more (locked candidates or pairs) but never guessing. Every puzzle has exactly
+  one solution and is generated on the Kindle.
+- **Notes** (pencil marks), erase, undo, hint, and a check that marks wrong cells.
+- **Your game is saved** after every move, so it survives sleep and closing the app.
+- **Built for e-ink:** black on white, no animation, big tap targets, and only the
+  cells that change are repainted.
 
-- Three levels. **Fácil** and **Medio** need only singles; **Difícil** always
-  needs more (locked candidates or pairs) but never guessing. Every puzzle has
-  exactly one solution.
-- Notes (pencil marks), erase, undo, hint, and a check that marks wrong cells.
-- The game is saved after every move (`localStorage`), so it survives sleep and
-  closing the app. Solved counts and best times per level.
+The interface is in Spanish.
 
-## Layout
+## Requirements
 
-| Path | What |
-|---|---|
-| `waf/sudoku.js` | The engine: generator, logical solver (grades the level) and brute-force uniqueness check. No DOM. |
-| `waf/app.js`, `app.css`, `index.html`, `config.xml` | The app. ES5 only; `#app`'s font size is one board cell, so all CSS lengths are in cells. |
-| `kindle/` | `Sudoku.sh` (library launcher), `install.sh` / `uninstall.sh`, and the library cover (`cover.svg`, rendered to `cover.png`). |
-| `deploy.sh` | Runs the tests and installs over Wi-Fi (KOReader's SSH server, port 2222, key auth). |
-| `test/engine.test.js` | `node test/engine.test.js` (set `N=400` for more puzzles). |
+- A **jailbroken Kindle** with the KindleModding hotfix, which lets `.sh` files in
+  the library run as apps ("scriptlets"). If KOReader or kTerm open from your
+  library, you have it.
+- Tested on a **Kindle Paperwhite 12th gen, firmware 5.20.2**. The layout adapts
+  to the screen, so other touch Kindles should work, but they are untested.
 
 ## Install
 
-1. On the Kindle, start KOReader's SSH server (key auth).
-2. On the Mac: `./deploy.sh <kindle-ip>`.
-3. Open **Sudoku** from the Kindle library.
+1. Download `sudoku.zip` from the [latest release](https://github.com/agarciab28/kindle-sudoku/releases/latest) and unzip it.
+   You get a file, `Sudoku.sh`, and a folder, `sudoku`.
+2. Connect the Kindle by USB and copy **both** into its `documents` folder.
+3. Eject the Kindle and open **Sudoku** from the library.
 
-Uninstall: `ssh -p 2222 root@<kindle-ip> 'sh /mnt/us/sudoku-app/uninstall.sh'`.
+The first time it opens, the launcher installs the app; after that it just opens it.
 
-## Notes
+**Update:** copy the new `Sudoku.sh` and `sudoku` over the old ones. Your saved
+game and stats are kept.
 
-- The app is registered in `/var/local/appreg.db` the same way as Bóveda
-  (`kindle-vault`); `install.sh` backs the DB up once to
-  `/mnt/us/sudoku-app/appreg.db.orig`.
-- It asks for no permissions: no `local-port-access`, no network.
-- Library cover: `deploy.sh` embeds `kindle/cover.png` in the launcher as its `# Icon: data:image/png;base64,…` header (600×900). To change it, edit `kindle/cover.svg`, render it at 600×900 (e.g. headless Chrome `--screenshot --window-size=600,900`) and deploy.
-- The saved game and the stats live in the app's `localStorage`, which the Kindle
-  keeps in `/mnt/us/.active_content_sandbox/sudoku/` (verified on the device: the
-  game survives closing the app). `uninstall.sh` removes it.
-- Screen: 1272×1696; the board ends up about 1060 px wide below the title bar.
-- To try the UI on a computer, serve `waf/` over HTTP and open it at about
-  1264×1580.
+**Uninstall:** delete `Sudoku.sh` and the `sudoku` folder from `documents`. That
+leaves a small registration and the saved game behind; to remove those too, run
+this on the Kindle (kTerm or SSH) *before* deleting the folder:
+
+```sh
+sh /mnt/us/documents/sudoku/uninstall
+```
+
+### En español
+
+1. Descarga `sudoku.zip` de la [última versión](https://github.com/agarciab28/kindle-sudoku/releases/latest) y descomprímelo.
+2. Conecta el Kindle por USB y copia el archivo `Sudoku.sh` y la carpeta `sudoku` a la carpeta `documents`.
+3. Expulsa el Kindle y abre **Sudoku** desde la biblioteca.
+
+## What it does to your Kindle
+
+Nothing outside its own files. The launcher (`Sudoku.sh`, a short script you can read):
+
+- copies the app's five files to `/var/local/mesquite/sudoku/`, where the Kindle
+  keeps its own web apps;
+- adds the app's own rows to the Kindle's app registry (`/var/local/appreg.db`),
+  the same way Amazon's web apps are registered, and never touches other rows;
+- opens the app.
+
+The app asks for no permissions (see `waf/config.xml`): it cannot use the network
+or talk to local services. The saved game and the stats live in the app's
+`localStorage`, which the Kindle keeps in `/mnt/us/.active_content_sandbox/sudoku/`.
+
+Jailbreaking and installing unofficial software is at your own risk; this
+project is not affiliated with Amazon.
+
+## How the levels work
+
+Difficulty is the hardest technique a puzzle needs, not how many numbers it shows.
+
+| Level | Needs | Givens |
+|---|---|---|
+| Fácil | Singles only | 39–40 |
+| Medio | Singles only | 30–32 |
+| Difícil | Locked candidates or pairs, never guessing | 22–28 |
+
+The generator removes givens while a logical solver, limited to the level's
+techniques, can still finish the puzzle. A deduction-only solve also proves the
+solution is unique.
+
+## Development
+
+| Path | What |
+|---|---|
+| `waf/sudoku.js` | The engine: generator, logical solver (grades the level) and a brute-force uniqueness check. No DOM. |
+| `waf/app.js`, `app.css`, `index.html`, `config.xml` | The app, a Kindle WAF. ES5 only (the Kindle's web engine is old); `#app`'s font size is one board cell, so all CSS lengths are in cells. |
+| `kindle/Sudoku.sh` | The launcher: installs on first run, then opens the app. |
+| `kindle/uninstall` | Full removal. No `.sh` extension on purpose: the Kindle lists every `.sh` under `documents` as a book. |
+| `kindle/cover.svg`, `cover.png` | The library cover (600×900). `package.sh` embeds the PNG in the launcher as its `# Icon:` line. |
+| `package.sh` | Runs the tests and builds `build/sudoku.zip`. The zip is reproducible: same sources, same checksum. |
+| `deploy.sh` | Builds and copies to a Kindle over Wi-Fi (KOReader's SSH server, port 2222, key auth). |
+| `kindleforge/` | Install and uninstall scripts in the format of the KindleForge package repository. |
+| `test/engine.test.js` | `node test/engine.test.js` (set `N=400` for more puzzles). |
+
+To try the interface on a computer, serve `waf/` over HTTP and open it at about
+1264×1580. To change the cover, edit `kindle/cover.svg` and render it at 600×900
+(for example, headless Chrome with `--screenshot --window-size=600,900`).
+
+Device notes: the screen is 1272×1696 and the board ends up about 1060 px wide
+below the title bar. The title bar's back arrow reaches the app as the LIPC
+property `invokeAction = KPP_BACK`.
+
+## License
+
+[MIT](LICENSE)
