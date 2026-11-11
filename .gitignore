@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+# Never commit anything copied back from the Kindle.
+appreg.db*
+*.log

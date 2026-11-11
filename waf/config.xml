@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:kindle="http://kindle.amazon.com/ns/widget-extensions"
+    id="com.alexgar.sudoku" version="1.0" viewmodes="application">
+
+    <name xml:lang="en">Sudoku</name>
+    <name xml:lang="es">Sudoku</name>
+    <description xml:lang="es">Sudoku para tinta electrónica (sin red)</description>
+
+    <content src="index.html" />
+
+    <!-- No network and no local ports: everything runs inside the page. -->
+
+    <kindle:gestures>
+        <kindle:param name="tap" value="yes" />
+    </kindle:gestures>
+
+    <kindle:messaging>
+        <kindle:app name="com.lab126.chromebar" value="yes" />
+        <kindle:app name="com.lab126.pillow" value="yes" />
+        <kindle:app name="com.lab126.appmgrd" value="yes" />
+        <kindle:app name="com.alexgar.sudoku" value="yes" />
+    </kindle:messaging>
+
+    <feature name="http://kindle.amazon.com/apis" required="true">
+        <param name="appmgr" value="yes" />
+        <param name="gestures" value="yes" />
+        <param name="chrome" value="yes" />
+        <param name="dev" value="yes" />
+        <param name="device" value="yes" />
+        <param name="messaging" value="yes" />
+        <param name="viewport" value="yes" />
+    </feature>
+
+    <kindle:settings>
+        <kindle:setting name="internetRequired" value="no" />
+        <kindle:setting name="saveContext" value="no" />
+    </kindle:settings>
+</widget>
