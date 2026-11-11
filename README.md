@@ -5,7 +5,7 @@ a book and runs entirely on the device: no network, no account, no permissions.
 
 <img src="docs/screenshot.png" alt="Sudoku on a Kindle Paperwhite" width="320">
 
-- **Three levels.** *Fácil* and *Medio* need only singles. *Difícil* always needs
+- **Three levels.** *Easy* and *Medium* need only singles. *Hard* always needs
   more (locked candidates or pairs) but never guessing. Every puzzle has exactly
   one solution and is generated on the Kindle.
 - **Notes** (pencil marks), erase, undo, hint, and a check that marks wrong cells.
@@ -13,7 +13,7 @@ a book and runs entirely on the device: no network, no account, no permissions.
 - **Built for e-ink:** black on white, no animation, big tap targets, and only the
   cells that change are repainted.
 
-The interface is in Spanish.
+The interface is in **English or Spanish** (English by default). Switch it in the settings: the gear at the top right, under the X.
 
 ## Requirements
 
@@ -72,9 +72,9 @@ Difficulty is the hardest technique a puzzle needs, not how many numbers it show
 
 | Level | Needs | Givens |
 |---|---|---|
-| Fácil | Singles only | 39–40 |
-| Medio | Singles only | 30–32 |
-| Difícil | Locked candidates or pairs, never guessing | 22–28 |
+| Easy | Singles only | 39–40 |
+| Medium | Singles only | 30–32 |
+| Hard | Locked candidates or pairs, never guessing | 22–28 |
 
 The generator removes givens while a logical solver, limited to the level's
 techniques, can still finish the puzzle. A deduction-only solve also proves the
@@ -85,7 +85,7 @@ solution is unique.
 | Path | What |
 |---|---|
 | `waf/sudoku.js` | The engine: generator, logical solver (grades the level) and a brute-force uniqueness check. No DOM. |
-| `waf/app.js`, `app.css`, `index.html`, `config.xml` | The app, a Kindle WAF. ES5 only (the Kindle's web engine is old); `#app`'s font size is one board cell, so all CSS lengths are in cells. |
+| `waf/app.js`, `app.css`, `index.html`, `config.xml` | The app, a Kindle WAF. All interface text is in the `TEXT` table in `app.js` (one block per language). ES5 only (the Kindle's web engine is old); `#app`'s font size is one board cell, so all CSS lengths are in cells. |
 | `kindle/Sudoku.sh` | The launcher: installs on first run, then opens the app. |
 | `kindle/uninstall` | Full removal. No `.sh` extension on purpose: the Kindle lists every `.sh` under `documents` as a book. |
 | `kindle/cover.svg`, `cover.png` | The library cover (600×900). `package.sh` embeds the PNG in the launcher as its `# Icon:` line. |
@@ -100,7 +100,9 @@ To try the interface on a computer, serve `waf/` over HTTP and open it at about
 
 Device notes: the screen is 1272×1696 and the board ends up about 1060 px wide
 below the title bar. The title bar's back arrow reaches the app as the LIPC
-property `invokeAction = KPP_BACK`.
+property `invokeAction = KPP_BACK`. The title bar cannot hold a button of the
+app's own: `KPP_MORE` shows three dots, but a tap opens the Kindle's menu, not
+the app. So the settings gear is in the page (`waf/gear.svg`, embedded in `app.css`).
 
 ## License
 

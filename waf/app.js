@@ -1,11 +1,12 @@
 /* Sudoku: Kindle WAF. ES5 only (the Kindle web engine is old).
-   Everything is local: no network, no service. The game is saved in localStorage. */
+   Everything is local: no network, no service. The game is saved in localStorage.
+   The interface is in English or Spanish (see TEXT); English is the default. */
 (function () {
   var APP_ID = 'com.alexgar.sudoku';
   var S = window.Sudoku;
   var app = document.getElementById('app');
   var LEVELS = ['facil', 'medio', 'dificil'];
-  var LABEL = { facil: 'Fácil', medio: 'Medio', dificil: 'Difícil' };
+  var LABEL = { facil: 1, medio: 1, dificil: 1 }; // the valid level ids; their names are in TEXT
   var IDLE_CAP = 120000; // a pause longer than this does not count as playing time
   var MAX_UNDO = 60;
 
@@ -33,10 +34,60 @@
     };
   })();
 
+  // ---- language -------------------------------------------------------------
+  // {0}, {1} are filled in by t(). Level ids stay 'facil' / 'medio' / 'dificil' in
+  // saved games whatever the language.
+  var TEXT = {
+    en: {
+      'name.en': 'English', 'name.es': 'Español', language: 'Language', settings: 'Settings', back: 'Back',
+      'level.facil': 'Easy', 'level.medio': 'Medium', 'level.dificil': 'Hard',
+      'continue': 'Continue', continueSub: '{0} · {1} cells left', newGame: 'New game',
+      unfinished: 'You have an unfinished game. Starting another one discards it.',
+      startNew: 'Start a new {0} one', solved: 'Solved', colLevel: 'Level', colSolved: 'Solved', colBest: 'Best time',
+      noSave: 'This Kindle cannot save your progress: if you close the app, the game is lost.',
+      preparing: 'Preparing a new {0} sudoku…',
+      won: 'Solved!', hint1: '1 hint', hintN: '{0} hints', another: 'Another {0} one', menu: 'Menu',
+      keyLeft: '{0} left', keyDone: 'done', keyOver: 'too many',
+      notes: 'Notes', erase: 'Erase', undo: 'Undo', hint: 'Hint', check: 'Check', status: '{0} · {1} left',
+      msgPick: 'Tap a cell first', msgGiven: 'That cell is part of the puzzle', msgNotes: 'Erase the number to add notes',
+      msgNoUndo: 'Nothing to undo', msgRight: 'That cell is already right',
+      chkOk: 'All good so far', chk1: '1 wrong cell', chkN: '{0} wrong cells', msgFull: 'Full, but with mistakes: tap Check'
+    },
+    es: {
+      'name.en': 'English', 'name.es': 'Español', language: 'Idioma', settings: 'Ajustes', back: 'Volver',
+      'level.facil': 'Fácil', 'level.medio': 'Medio', 'level.dificil': 'Difícil',
+      'continue': 'Continuar', continueSub: '{0} · faltan {1} casillas', newGame: 'Juego nuevo',
+      unfinished: 'Tienes un juego sin terminar. Si empiezas otro, ese se pierde.',
+      startNew: 'Empezar uno {0}', solved: 'Resueltos', colLevel: 'Nivel', colSolved: 'Resueltos', colBest: 'Mejor tiempo',
+      noSave: 'Este Kindle no deja guardar el avance: si cierras la app, el juego se pierde.',
+      preparing: 'Preparando un sudoku {0}…',
+      won: '¡Resuelto!', hint1: '1 pista', hintN: '{0} pistas', another: 'Otro {0}', menu: 'Menú',
+      keyLeft: 'faltan {0}', keyDone: 'listo', keyOver: 'de más',
+      notes: 'Notas', erase: 'Borrar', undo: 'Deshacer', hint: 'Pista', check: 'Comprobar', status: '{0} · faltan {1}',
+      msgPick: 'Toca una casilla primero', msgGiven: 'Esa casilla es del sudoku', msgNotes: 'Borra el número para poner notas',
+      msgNoUndo: 'No hay nada que deshacer', msgRight: 'Esa casilla ya está bien',
+      chkOk: 'Todo bien hasta aquí', chk1: '1 casilla con error', chkN: '{0} casillas con error', msgFull: 'Lleno, pero hay errores: toca Comprobar'
+    }
+  };
+  var lang = 'en';
+  function setLang(l, save) {
+    lang = TEXT[l] ? l : 'en';
+    document.documentElement.lang = lang;
+    if (save) { store.set('sudoku.lang', lang); }
+  }
+  function t(key, a, b) {
+    var s = TEXT[lang][key];
+    if (s === undefined) { s = TEXT.en[key]; }
+    return String(s).replace('{0}', a === undefined ? '' : a).replace('{1}', b === undefined ? '' : b);
+  }
+  function L(level) { return t('level.' + level); }      // "Easy"
+  function l(level) { return L(level).toLowerCase(); }   // "easy", inside a sentence
+
   // ---- state ----------------------------------------------------------------
   var game = null;       // { level, puzzle[], solution[], val[], notes[], elapsed, hints, undo[], done }
   var stats = {};        // { facil: { won, best }, ... }
-  var screen = 'menu';   // menu | busy | game
+  var screen = 'menu';   // menu | busy | game | settings
+  var beforeSettings = 'menu'; // where "Back" on the settings screen returns to
   var sel = -1, noteMode = false, errs = {}, message = '';
   var cells = [], keys = [], drawn = [], drawnKeys = [];
   var lastTick = 0;
@@ -114,40 +165,65 @@
   function renderMenu(confirmLevel) {
     screen = 'menu';
     setupChrome('Sudoku');
-    var h = '<div class="menu"><div class="logo">Sudoku</div>', i, l;
+    var h = '<div class="menu">' + GEAR + '<div class="logo">Sudoku</div>', i, lv;
     var playing = game && !game.done;
     if (playing) {
-      h += btn('continue', '', 'Continuar', LABEL[game.level] + ' · faltan ' + missing() + ' casillas', 'dark');
+      h += btn('continue', '', t('continue'), t('continueSub', L(game.level), missing()), 'dark');
     }
-    h += '<div class="label">Juego nuevo</div><table class="three"><tr>';
+    h += '<div class="label">' + t('newGame') + '</div><table class="three"><tr>';
     for (i = 0; i < LEVELS.length; i++) {
-      l = LEVELS[i];
-      h += '<td>' + btn('new', ' data-l="' + l + '"', LABEL[l]) + '</td>';
+      lv = LEVELS[i];
+      h += '<td>' + btn('new', ' data-l="' + lv + '"', L(lv)) + '</td>';
     }
     h += '</tr></table>';
     if (confirmLevel) {
-      h += '<div class="box"><div class="note">Tienes un juego sin terminar. Si empiezas otro, ese se pierde.</div>' +
-        btn('newok', ' data-l="' + confirmLevel + '"', 'Empezar uno ' + LABEL[confirmLevel].toLowerCase()) + '</div>';
+      h += '<div class="box"><div class="note">' + t('unfinished') + '</div>' +
+        btn('newok', ' data-l="' + confirmLevel + '"', t('startNew', l(confirmLevel))) + '</div>';
     }
-    h += '<div class="label">Resueltos</div><table class="stats"><tr><th>Nivel</th><th class="num">Resueltos</th><th class="num">Mejor tiempo</th></tr>';
+    h += '<div class="label">' + t('solved') + '</div><table class="stats"><tr><th>' + t('colLevel') + '</th><th class="num">' +
+      t('colSolved') + '</th><th class="num">' + t('colBest') + '</th></tr>';
     for (i = 0; i < LEVELS.length; i++) {
-      l = LEVELS[i];
-      h += '<tr><td>' + LABEL[l] + '</td><td class="num">' + stats[l].won + '</td><td class="num">' +
-        (stats[l].best ? fmtTime(stats[l].best) : '—') + '</td></tr>';
+      lv = LEVELS[i];
+      h += '<tr><td>' + L(lv) + '</td><td class="num">' + stats[lv].won + '</td><td class="num">' +
+        (stats[lv].best ? fmtTime(stats[lv].best) : '—') + '</td></tr>';
     }
     h += '</table>';
     if (!store.persistent) {
-      h += '<div class="box"><div class="note">Este Kindle no deja guardar el avance: si cierras la app, el juego se pierde.</div></div>';
+      h += '<div class="box"><div class="note">' + t('noSave') + '</div></div>';
     }
     app.innerHTML = h + '</div>';
     window.scrollTo(0, 0);
   }
 
+  // ---- settings (the gear at the top right of the menu and of the game) ------
+  var GEAR = '<a class="gear" href="javascript:void(0)" data-a="settings"></a>';
+  function openSettings() {
+    if (screen === 'settings' || screen === 'busy') { return; }
+    if (screen === 'game') { tick(); saveGame(); lastTick = 0; }
+    beforeSettings = screen;
+    renderSettings();
+  }
+  function renderSettings() {
+    screen = 'settings';
+    setupChrome('Sudoku · ' + t('settings'));
+    var h = '<div class="menu"><div class="logo">' + t('settings') + '</div><div class="label">' + t('language') +
+      '</div><table class="three"><tr>', code;
+    for (code in TEXT) {
+      if (TEXT.hasOwnProperty(code)) {
+        h += '<td>' + btn('lang', ' data-v="' + code + '"', t('name.' + code), '', code === lang ? 'dark' : '') + '</td>';
+      }
+    }
+    app.innerHTML = h + '</tr></table><div class="label">&nbsp;</div>' + btn('settingsback', '', t('back')) + '</div>';
+    window.scrollTo(0, 0);
+  }
+  function closeSettings() {
+    if (beforeSettings === 'game' && game) { renderGame(); } else { renderMenu(); }
+  }
+
   // ---- new game -------------------------------------------------------------
   function startNew(level) {
     screen = 'busy';
-    app.innerHTML = '<div class="menu"><div class="logo">Sudoku</div><div class="busy">Preparando un sudoku ' +
-      LABEL[level].toLowerCase() + '…</div></div>';
+    app.innerHTML = '<div class="menu"><div class="logo">Sudoku</div><div class="busy">' + t('preparing', l(level)) + '</div></div>';
     var best = null, tries = 0;
     // In short slices, so the "Preparando" text gets painted first.
     function step() {
@@ -173,10 +249,10 @@
   // ---- game screen ----------------------------------------------------------
   function renderGame() {
     screen = 'game';
-    setupChrome('Sudoku · ' + LABEL[game.level]);
+    setupChrome('Sudoku · ' + L(game.level));
     sel = -1; noteMode = false; errs = {}; message = ''; drawn = []; cells = [];
     lastTick = Date.now();
-    var h = '<div class="status"><span id="st"></span><span id="msg"></span></div><table class="board">', r, c;
+    var h = '<div class="status"><span id="st"></span>' + GEAR + '<span id="msg"></span></div><table class="board">', r, c;
     for (r = 0; r < 9; r++) {
       h += '<tr>';
       for (c = 0; c < 9; c++) {
@@ -203,9 +279,9 @@
     var box = document.getElementById('controls'), h, d;
     keys = []; drawnKeys = [];
     if (game.done) {
-      h = '<div class="win"><div class="wt">¡Resuelto!</div><div class="wd">' + LABEL[game.level] + ' · ' + fmtTime(game.elapsed) +
-        (game.hints ? ' · ' + game.hints + (game.hints === 1 ? ' pista' : ' pistas') : '') + '</div><table><tr>' +
-        act('newok', 'Otro ' + LABEL[game.level].toLowerCase(), ' data-l="' + game.level + '"') + act('menu', 'Menú') + '</tr></table></div>';
+      h = '<div class="win"><div class="wt">' + t('won') + '</div><div class="wd">' + L(game.level) + ' · ' + fmtTime(game.elapsed) +
+        (game.hints ? ' · ' + (game.hints === 1 ? t('hint1') : t('hintN', game.hints)) : '') + '</div><table><tr>' +
+        act('newok', t('another', l(game.level)), ' data-l="' + game.level + '"') + act('menu', t('menu')) + '</tr></table></div>';
       box.innerHTML = h;
       return;
     }
@@ -215,8 +291,8 @@
         '</span><span class="kc"></span></a></td>';
     }
     // "Menú" is also the title bar's back arrow; the button is there in case the arrow fails.
-    h += '</tr></table><table class="acts"><tr>' + act('menu', 'Menú') + act('notes', 'Notas', ' id="a-notes"') +
-      act('erase', 'Borrar') + act('undo', 'Deshacer') + act('hint', 'Pista') + act('check', 'Comprobar') + '</tr></table>';
+    h += '</tr></table><table class="acts"><tr>' + act('menu', t('menu')) + act('notes', t('notes'), ' id="a-notes"') +
+      act('erase', t('erase')) + act('undo', t('undo')) + act('hint', t('hint')) + act('check', t('check')) + '</tr></table>';
     box.innerHTML = h;
     var as = box.getElementsByTagName('a');
     for (var i = 0; i < as.length; i++) {
@@ -249,11 +325,11 @@
       if (drawnKeys[d] === sig) { continue; }
       drawnKeys[d] = sig;
       keys[d].className = 'key' + (left <= 0 ? ' out' : '');
-      keys[d].getElementsByTagName('span')[1].innerHTML = left > 0 ? 'faltan ' + left : (left === 0 ? 'listo' : 'de más');
+      keys[d].getElementsByTagName('span')[1].innerHTML = left > 0 ? t('keyLeft', left) : (left === 0 ? t('keyDone') : t('keyOver'));
     }
     var nb = document.getElementById('a-notes');
     if (nb) { nb.className = 'act' + (noteMode ? ' on' : ''); }
-    setText('st', game.done ? LABEL[game.level] : LABEL[game.level] + ' · faltan ' + count[0]);
+    setText('st', game.done ? L(game.level) : t('status', L(game.level), count[0]));
     setText('msg', message);
   }
   function setText(id, text) {
@@ -267,15 +343,15 @@
     if (game.undo.length > MAX_UNDO) { game.undo.shift(); }
   }
   function editable() { // the selected cell, if the player may change it
-    if (sel < 0) { message = 'Toca una casilla primero'; return false; }
-    if (game.puzzle[sel]) { message = 'Esa casilla es del sudoku'; return false; }
+    if (sel < 0) { message = t('msgPick'); return false; }
+    if (game.puzzle[sel]) { message = t('msgGiven'); return false; }
     return true;
   }
   function putDigit(d) {
     if (!editable()) { return; }
     var bit = 1 << (d - 1), i;
     if (noteMode) {
-      if (game.val[sel]) { message = 'Borra el número para poner notas'; return; }
+      if (game.val[sel]) { message = t('msgNotes'); return; }
       remember();
       game.notes[sel] ^= bit;
       return;
@@ -295,13 +371,13 @@
     game.val[sel] = 0; game.notes[sel] = 0; delete errs[sel];
   }
   function undo() {
-    if (!game.undo.length) { message = 'No hay nada que deshacer'; return; }
+    if (!game.undo.length) { message = t('msgNoUndo'); return; }
     restore(game.undo.pop());
     errs = {};
   }
   function hint() {
     if (!editable()) { return; }
-    if (game.val[sel] === game.solution[sel]) { message = 'Esa casilla ya está bien'; return; }
+    if (game.val[sel] === game.solution[sel]) { message = t('msgRight'); return; }
     remember();
     var d = game.solution[sel], bit = 1 << (d - 1);
     game.val[sel] = d; game.notes[sel] = 0; game.hints++; delete errs[sel];
@@ -314,14 +390,14 @@
     for (var i = 0; i < 81; i++) {
       if (game.val[i] && game.val[i] !== game.solution[i]) { errs[i] = true; n++; }
     }
-    message = n === 0 ? 'Todo bien hasta aquí' : (n === 1 ? '1 casilla con error' : n + ' casillas con error');
+    message = n === 0 ? t('chkOk') : (n === 1 ? t('chk1') : t('chkN', n));
   }
   function checkEnd() {
     for (var i = 0; i < 81; i++) {
       if (!game.val[i]) { return; }
     }
     for (i = 0; i < 81; i++) {
-      if (game.val[i] !== game.solution[i]) { message = 'Lleno, pero hay errores: toca Comprobar'; return; }
+      if (game.val[i] !== game.solution[i]) { message = t('msgFull'); return; }
     }
     game.done = true; game.undo = []; sel = -1; noteMode = false;
     var s = stats[game.level];
@@ -357,6 +433,9 @@
       if (game && !game.done && game.undo.length) { renderMenu(level); } else { startNew(level); }
     }
     else if (a === 'newok') { startNew(level); }
+    else if (a === 'settings') { openSettings(); }
+    else if (a === 'settingsback') { closeSettings(); }
+    else if (a === 'lang' && screen === 'settings') { setLang(el.getAttribute('data-v'), true); renderSettings(); }
     else if (screen === 'game' && game && !game.done) { onGameAction(a, el); }
   }
   function leaveGame() {
@@ -386,7 +465,7 @@
     if (e.preventDefault) { e.preventDefault(); }
   }, false);
 
-  // ---- Kindle title bar (same setup as Bóveda) --------------------------------
+  // ---- Kindle title bar (same setup as Vault, kindle-vault) --------------------------------
   function setupChrome(title) {
     try {
       if (window.kindle && kindle.messaging) {
@@ -406,6 +485,7 @@
   function onBarButton(property, id) {
     var s = typeof id === 'object' ? JSON.stringify(id) : String(id);
     if (!/back/i.test(s)) { return; }
+    if (screen === 'settings') { closeSettings(); return; }
     if (screen === 'game') { leaveGame(); return; }
     // On the menu, back leaves the app.
     try { kindle.appmgr.back(); } catch (e) { /* the X in the title bar always works */ }
@@ -424,6 +504,7 @@
   // ---- start ----------------------------------------------------------------
   window.onresize = function () { layout(); };
   layout();
+  setLang(store.get('sudoku.lang'), false);
   loadStats();
   loadGame();
   initKindle();

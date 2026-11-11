@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:kindle="http://kindle.amazon.com/ns/widget-extensions"
-    id="com.alexgar.sudoku" version="1.0" viewmodes="application">
+    id="com.alexgar.sudoku" version="1.1" viewmodes="application">
 
     <name xml:lang="en">Sudoku</name>
     <name xml:lang="es">Sudoku</name>
+    <description xml:lang="en">Sudoku for e-ink (fully offline)</description>
     <description xml:lang="es">Sudoku para tinta electrónica (sin red)</description>
 
     <content src="index.html" />
