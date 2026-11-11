@@ -1,0 +1,9 @@
+{
+    "name": "Sudoku",
+    "uri": "Sudoku",
+    "description": "Sudoku For E-Ink, Fully Offline (English / Español)",
+    "author": "agarciab28",
+    "ABI": ["hf"],
+    "dependencies": [],
+    "tags": ["GAMES"]
+}

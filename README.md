@@ -92,7 +92,7 @@ solution is unique.
 | `package.sh` | Runs the tests and builds `build/sudoku.zip` and its checksum. |
 | `.github/workflows/build.yml` | GitHub Actions: tests and packages on every push; pushing a tag `v…` publishes the release with the zip and its checksum (notes from `.github/release-notes.md`). |
 | `deploy.sh` | Builds and copies to a Kindle over Wi-Fi (KOReader's SSH server, port 2222, key auth). |
-| `kindleforge/` | Install and uninstall scripts in the format of the KindleForge package repository. |
+| `kindleforge/` | Install and uninstall scripts in the format of the KindleForge package repository, and the registry entry. The install script checks the download against the release's checksum. |
 | `test/engine.test.js` | `node test/engine.test.js` (set `N=400` for more puzzles). |
 
 To try the interface on a computer, serve `waf/` over HTTP and open it at about
