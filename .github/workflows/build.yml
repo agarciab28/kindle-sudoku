@@ -1,0 +1,58 @@
+# Tests and packages Sudoku on every push; a tag "v…" also publishes the release.
+# The release zip is built here, from the tagged source.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Engine tests (400 puzzles per level)
+        run: N=400 node test/engine.test.js
+      - name: Package
+        run: ./package.sh
+      - name: Checksum
+        run: cat build/sudoku.zip.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sudoku
+          path: |
+            build/sudoku.zip
+            build/sudoku.zip.sha256
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sudoku
+          path: dist
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            cat .github/release-notes.md
+            printf '\n## Checksum\n\n```\n'
+            cat dist/sudoku.zip.sha256
+            printf '```\n\nBuilt by GitHub Actions from this tag: %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/sudoku.zip dist/sudoku.zip.sha256 \
+            --title "Sudoku ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag

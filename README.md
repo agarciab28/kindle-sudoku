@@ -89,7 +89,8 @@ solution is unique.
 | `kindle/Sudoku.sh` | The launcher: installs on first run, then opens the app. |
 | `kindle/uninstall` | Full removal. No `.sh` extension on purpose: the Kindle lists every `.sh` under `documents` as a book. |
 | `kindle/cover.svg`, `cover.png` | The library cover (600×900). `package.sh` embeds the PNG in the launcher as its `# Icon:` line. |
-| `package.sh` | Runs the tests and builds `build/sudoku.zip`. The zip is reproducible: same sources, same checksum. |
+| `package.sh` | Runs the tests and builds `build/sudoku.zip` and its checksum. |
+| `.github/workflows/build.yml` | GitHub Actions: tests and packages on every push; pushing a tag `v…` publishes the release with the zip and its checksum (notes from `.github/release-notes.md`). |
 | `deploy.sh` | Builds and copies to a Kindle over Wi-Fi (KOReader's SSH server, port 2222, key auth). |
 | `kindleforge/` | Install and uninstall scripts in the format of the KindleForge package repository. |
 | `test/engine.test.js` | `node test/engine.test.js` (set `N=400` for more puzzles). |
